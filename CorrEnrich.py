@@ -868,55 +868,36 @@ def build_tree(download=False):
 
 
 def read_process_files(new=False, filter_value=0.55, merge_big_abx=True, remove_mitochondrial=True, gene_name=False):
-    partek_df = pd.read_csv(
-        "./data/New Partek_bell_all_Normalization_Normalized_counts1.csv")
-    partek_df = partek_df.set_index("Gene Symbol")
     folder_dir = f"./data/"
-    genome_df = pd.read_csv(folder_dir + "rpkm_named_genome-2023-09-26.tsv", sep="\t")
     transcriptome_df = pd.read_csv(folder_dir + "transcriptome_2023-09-17-genes_norm_named.tsv", sep="\t")
 
     if gene_name:
         # replace all empty cells in gene_name with the value in gene_id
-        genome_df["gene_name"] = genome_df.apply(
-            lambda row: row["gene_id"] if pd.isna(row["gene_name"]) else row["gene_name"], axis=1)
         transcriptome_df["gene_name"] = transcriptome_df.apply(
             lambda row: row["gene_id"] if pd.isna(row["gene_name"]) else row["gene_name"], axis=1)
-        genome_df = genome_df.set_index("gene_name")
         transcriptome_df = transcriptome_df.set_index("gene_name")
-        genome_df = genome_df.drop("gene_id", axis=1)
         transcriptome_df = transcriptome_df.drop("gene_id", axis=1)
     else:
-        genome_df = genome_df.drop("gene_name", axis=1)
         transcriptome_df = transcriptome_df.drop("gene_name", axis=1)
-        genome_df.rename(columns={'gene_id': 'gene_name'}, inplace=True)
         transcriptome_df.rename(columns={'gene_id': 'gene_name'}, inplace=True)
-        genome_df = genome_df.set_index("gene_name")
         transcriptome_df = transcriptome_df.set_index("gene_name")
-
-    # replace partek nans with 0
-    partek_df = partek_df.fillna(0)
 
     metadata = get_metadata(data_folder, type="", only_old=not new, filter=filter_value)
 
     # change genome and transcriptome column names using metadata: replace the name which is 'Sample' to the
     # equivalent 'ID'
-    genome_df = genome_df.rename(columns=metadata.set_index('Sample')['ID'].to_dict())
     transcriptome_df = transcriptome_df.rename(columns=metadata.set_index('Sample')['ID'].to_dict())
 
     # keep in all 3 DFs only columns that are in metadata["ID"].values
-    genome_df = genome_df[[col for col in genome_df.columns if col in metadata["ID"].values]]
     transcriptome_df = transcriptome_df[[col for col in transcriptome_df.columns if col in metadata["ID"].values]]
-    partek_df = partek_df[[col for col in partek_df.columns if col in metadata["ID"].values]]
 
     if merge_big_abx:
         new_path = r"./data/"
         new_data = pd.read_csv(new_path + "mRNA_NEBNext_20200908_genes_norm_named.tsv", sep="\t")
         # sum rows with the same gene_name and drop the gene_id column
-        # new_data = new_data.drop("gene_id", axis=1).groupby("gene_name").sum()
         new_stats = pd.read_csv(new_path + r"big_abx_stats.csv")
         # remove all samples with "aligned" < 0.5
         columns_to_keep = new_stats[new_stats["aligned"] > filter_value]["Sample Name"]
-        # new_data = new_data[columns_to_keep.append(pd.Series(["gene_name", "gene_id"]))]
         columns_to_keep = columns_to_keep.tolist()  # Convert to list if needed
         columns_to_keep.append("gene_name")  # Append to the list
         columns_to_keep.append("gene_id")
@@ -939,23 +920,15 @@ def read_process_files(new=False, filter_value=0.55, merge_big_abx=True, remove_
 
     # sum rows from transcriptome and genome with the same index TODO
     # print indexes that appear twice in genome and transcriptome
-    if len(genome_df.index[genome_df.index.duplicated()]) > 0:
-        print("indexes that appear twice in genome:\n", genome_df.index[genome_df.index.duplicated()])
-        print("and transcriptome:\n", transcriptome_df.index[transcriptome_df.index.duplicated()])
-    genome_df = genome_df.groupby(genome_df.index).sum()
+    if len(transcriptome_df.index[transcriptome_df.index.duplicated()]) > 0:
+        print("indexes that appear twice in transcriptome:\n", transcriptome_df.index[transcriptome_df.index.duplicated()])
     transcriptome_df = transcriptome_df.groupby(transcriptome_df.index).sum()
 
     # remove sparse genes (more than 50% zeros in a row):
     # check all sparse genes (more than 50% zeros in a row) in each df, and check if the non-zero samples are the same
     # condition, using the metadata
-    partek_zeros = partek_df[partek_df == 0].count(axis=1)
-    partek_sparse = partek_zeros[partek_zeros > 0.5 * partek_df.shape[1]]
-    genome_zeros = genome_df[genome_df == 0].count(axis=1)
-    genome_sparse = genome_zeros[genome_zeros > 0.5 * genome_df.shape[1]]
     transcriptome_zeros = transcriptome_df[transcriptome_df == 0].count(axis=1)
     transcriptome_sparse = transcriptome_zeros[transcriptome_zeros > 0.5 * transcriptome_df.shape[1]]
-    partek_df = partek_df.drop(partek_sparse.index)
-    genome_df = genome_df.drop(genome_sparse.index)
     transcriptome_df = transcriptome_df.drop(transcriptome_sparse.index)
 
     if remove_mitochondrial:
@@ -963,12 +936,8 @@ def read_process_files(new=False, filter_value=0.55, merge_big_abx=True, remove_
             transcriptome_df.index.str.lower().isin(set(mitochondrial_genes))].tolist()
 
         # remove mitochondrial genes from the dataframes
-        genome_df = genome_df.drop(matching_indices, errors='ignore')
         transcriptome_df = transcriptome_df.drop(matching_indices, errors='ignore')
-        partek_df = partek_df.drop(matching_indices, errors='ignore')
 
-    partek_df = (partek_df * 1000000).divide(partek_df.sum(axis=0), axis=1)
-    genome_df = (genome_df * 1000000).divide(genome_df.sum(axis=0), axis=1)
     transcriptome_df = (transcriptome_df * 1000000).divide(transcriptome_df.sum(axis=0), axis=1)
 
     # NOTICE! drop C9, C10, C18, M13, V14 from all DFs and metadata
@@ -976,7 +945,7 @@ def read_process_files(new=False, filter_value=0.55, merge_big_abx=True, remove_
     transcriptome_df = transcriptome_df.drop(to_remove, axis=1)
     metadata = metadata[~metadata["ID"].isin(to_remove)]
 
-    return genome_df, metadata, partek_df, transcriptome_df
+    return metadata, transcriptome_df
 
 
 def get_metadata(folder, type="", only_old=True, filter=0.55):
@@ -1095,7 +1064,7 @@ def set_plot_defaults():
 if __name__ == "__main__":
     run_type = sys.argv[1]
 
-    genome, metadata, partek, transcriptome = read_process_files(new=False)
+    metadata, transcriptome = read_process_files(new=False)
 
     genes_dict = get_ensmus_dict()
     genes = [genes_dict[gene] for gene in transcriptome.index]

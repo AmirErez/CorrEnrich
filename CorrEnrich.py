@@ -462,6 +462,8 @@ def calculate_hypergeometric_pvalue(N, K, n, k):
         The p-value
     """
     # Calculate the probability of getting k or more successes
+    if k > min(K, n):
+        print(f"Error: k ({k}) is greater than min(K, n) ({(K, n)})")
     pvalue = 1 - stats.hypergeom.cdf(k - 1, N, K, n)
 
     return pvalue
@@ -1058,7 +1060,7 @@ def set_plot_defaults():
         'ytick.labelsize': 10,
         'legend.fontsize': 10,
     })
-    sns.set_theme(rc=plt.rcParams)
+    # sns.set_theme(rc=plt.rcParams)
 
 
 if __name__ == "__main__":

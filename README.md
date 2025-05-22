@@ -106,4 +106,4 @@ Outputs are saved in `./Private/` with the run type appended to filenames (e.g.,
 
 ## 📜 License
 
-This repository is not published under a specific license. Please contact the author(s) for permission to reuse or adapt the code for other projects.
+See [LICENSE](LICENSE) for details.

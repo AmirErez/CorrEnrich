@@ -1,7 +1,7 @@
 import json
 import os
-import sys
 import pickle
+import sys
 from collections import defaultdict, deque
 from json import JSONEncoder
 from typing import Dict, Set, Tuple, Any
@@ -9,7 +9,6 @@ from typing import Dict, Set, Tuple, Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import wget
 from anytree import NodeMixin, PostOrderIter
 from anytree.importer import JsonImporter
@@ -923,7 +922,8 @@ def read_process_files(new=False, filter_value=0.55, merge_big_abx=True, remove_
     # sum rows from transcriptome and genome with the same index TODO
     # print indexes that appear twice in genome and transcriptome
     if len(transcriptome_df.index[transcriptome_df.index.duplicated()]) > 0:
-        print("indexes that appear twice in transcriptome:\n", transcriptome_df.index[transcriptome_df.index.duplicated()])
+        print("indexes that appear twice in transcriptome:\n",
+              transcriptome_df.index[transcriptome_df.index.duplicated()])
     transcriptome_df = transcriptome_df.groupby(transcriptome_df.index).sum()
 
     # remove sparse genes (more than 50% zeros in a row):

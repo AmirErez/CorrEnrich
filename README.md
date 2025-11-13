@@ -1,4 +1,4 @@
-﻿# ClusteringGO: Gene Ontology-based Expression Analysis
+﻿# CorrEnrich: Gene Ontology-based Expression Analysis
 
 ClusteringGO is a Python package designed for bioinformatics analysis to identify and analyze clusters of co-regulated genes based on their Gene Ontology (GO) terms. It evaluates gene clusters for both internal correlation and significant differential expression between experimental conditions.
 

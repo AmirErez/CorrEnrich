@@ -1,109 +1,101 @@
-# CorrEnrich
+﻿# ClusteringGO: Gene Ontology-based Expression Analysis
 
-**CorrEnrich** (Correlation Enrichment) is a Python toolkit for identifying and evaluating biologically meaningful gene clusters by analyzing their expression tightness, functional enrichment (via GO terms), and statistical significance under various experimental conditions.
+ClusteringGO is a Python package designed for bioinformatics analysis to identify and analyze clusters of co-regulated genes based on their Gene Ontology (GO) terms. It evaluates gene clusters for both internal correlation and significant differential expression between experimental conditions.
 
----
+### Features
 
-## 🧠 Purpose
+* **Data Processing**: A pipeline to read, normalize (TPM/RPM), filter, and transform gene expression data (imputation, log2, z-scoring).
 
-This codebase supports the analysis of gene expression data to:
+* **GO Tree Construction**: Automatically downloads the Gene Ontology and builds a hierarchical tree of GO terms.
 
-- Build a gene ontology (GO) tree branch of biological processes.
-- Map genes to GO terms using Ensembl annotations.
-- Calculate statistical properties of gene sets such as:
-  - Average pairwise correlation
-  - Expression tightness (standard deviation)
-  - Mann–Whitney U and t-tests
-  - Enrichment significance (hypergeometric p-values)
-- Simulate random gene clusters to estimate null distributions.
-- Apply False Discovery Rate (FDR) corrections for multiple hypotheses.
-- Output structured tables and plots to assess GO term relevance.
+* **Gene Mapping**: Maps genes from expression data to their corresponding GO terms using Ensembl BioMart.
 
----
+* **Flexible Statistical Analysis**:
 
-## 📂 Project Structure
+    * Analyzes conditions based on user-specified columns in the metadata (e.g., 'Drug', 'Treatment').
+    * Calculates average pairwise Spearman correlation within gene sets. 
+    * Compares cluster correlation against a random background distribution. 
+    * Performs Mann-Whitney U tests to assess differential expression of gene clusters.
 
+* **Automated Analysis**: A main script to run the end-to-end analysis pipeline across multiple conditions.
+
+* **Visualization**: Generates plots showing the relationship between gene set size and random correlation.
+
+### Installation
+
+To install the package, clone this repository and install it using pip:
 ```
-CorrEnrich.py
-├── ./Data/                       # Raw gene expression data and metadata
-├── ./Private/                   # Processed outputs, GO cluster metrics
-│   ├── clusters_properties/     # Top GO clusters with significant enrichment
-│   ├── random_tightness/        # Plots of correlation vs. group size
-│   ├── data process/            # Intermediate files (z-scored, imputed)
-├── go-basic.obo                 # Gene Ontology DAG (downloaded automatically)
+git clone <repository-url>
+cd clusteringgo-package
+pip install .
 ```
 
----
-
-## ⚙️ Key Features
-
-### 🧬 Data Processing
-- Reads transcriptomic data and metadata.
-- Handles merging datasets, filtering low-quality samples, and removing mitochondrial genes.
-- Normalizes expression, imputes missing values, and applies log2+z-score transformation.
-
-### 🌲 Ontology Construction
-- Parses GO DAG from `go-basic.obo`.
-- Builds a GO tree rooted at “biological_process” (GO:0008150).
-- Maps Ensembl genes to GO terms using BioMart.
-
-### 📊 Statistical Analysis
-- Correlation and variance of gene expression per GO term.
-- Randomization tests for significance of observed tightness/correlation.
-- FDR-corrected p-values for:
-  - Hypergeometric enrichment
-  - ECDF-based tightness
-  - Median-based t-tests
-
-### 📈 Visualization
-- Generates plots of average pairwise correlation vs. gene group size (with error bars).
-- Outputs TSV files with ranked GO terms per treatment and condition.
-
----
-
-## 📦 Requirements
-
-Install dependencies via pip:
-
-```bash
-pip install numpy pandas scipy matplotlib seaborn wget anytree goatools statsmodels biomart
+Alternatively, for development, install in editable mode:
+```
+pip install -e .
 ```
 
----
+### Usage
 
-## 🚀 Usage
+The main analysis can be run from the `run_analysis`.py script. Before running, you must update the `DATA_DIRECTORY` variable in the script to point to your data folder.
 
-Run from command line with a suffix to differentiate runs:
+The expected data directory structure is:
 
-```bash
-python CorrEnrich.py <experiment_suffix>
+```
+<DATA_DIRECTORY>/
+ |- metadata.xlsx
+ |- RASflow stats 2023_09_17.csv
+ |- new normalization/
+     |- transcriptome_2023-09-17-genes_norm_named.tsv
 ```
 
-Outputs are saved in `./Private/` with the run type appended to filenames (e.g., `transformed_data_experiment_suffix.csv`).
+### Command-Line Arguments
 
----
+* `data_dir`: Path to your root data directory.
 
-## 📑 Main Functions
+* `output_dir`: Path where results will be saved.
 
-| Function | Description |
-|---------|-------------|
-| `read_process_files()` | Loads and normalizes raw data, merges large datasets. |
-| `transform_data()` | Replaces missing values, log-transforms, z-scores data. |
-| `impute_zeros()` | Fills in missing values with group-wise mean/median. |
-| `build_tree()` | Builds/loads the GO term tree for biological processes. |
-| `calculate_correlation()` | Evaluates expression correlation/tightness per GO cluster. |
-| `get_random_corr()` | Generates null distributions for tightness tests. |
+* `--primary_col`: The main metadata column for comparison (e.g., `Drug`).
 
----
+* `--control_val`: The value in the primary column to use as the control group (e.g., `PBS`).
 
-## 📝 Notes
+* `--secondary_col` (Optional): A second metadata column for a nested, or two-factor, analysis (e.g., `Treatment`).
 
-- Default configuration focuses on antibiotics (`Amp`, `Met`, `Neo`, `Van`, `Mix`) and treatments (`IP`, `IV`, `PO`).
-- Mitochondrial genes are excluded by default.
-- Requires `metadata.xlsx` and gene count matrices in `./Data/`.
+### Example Commands
 
----
+**1. Simple Analysis (One-Factor)**
 
-## 📜 License
+Compare all values in the `Drug` column against the PBS control.
 
-See [LICENSE](LICENSE) for details.
+```
+python run_analysis.py path/to/data/ path/to/output/ --primary_col Drug --control_val PBS
+```
+
+**2. Nested Analysis (Two-Factor)**
+
+Compare all values in the `Drug` column against `PBS`, but do so separately for each value in the `Treatment` column.
+
+```
+python run_analysis.py path/to/data/ path/to/output/ --primary_col Drug --control_val PBS --secondary_col Treatment
+```
+
+Results, including TSV files with statistics for each GO term and diagnostic plots, will be saved in the specified output directory.
+
+
+### Package Structure
+
+`clusteringgo/`: The main package source code.
+
+`data_processing.py`: Functions for data loading, cleaning, and transformation.
+
+`tree.py`: Code for building the GO tree and mapping genes.
+
+`stats.py`: Statistical tests and correlation calculations.
+
+`utils.py`: Helper functions for plotting and saving results.
+
+`tests/`: Unit tests for the package.
+
+`run_analysis.py`: Example script to execute the full pipeline.
+
+`setup.py`: Package installation script.
